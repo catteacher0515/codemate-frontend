@@ -1,0 +1,54 @@
+/* 全局 CSS Reset 和基础样式 */
+html, body, #app {
+  margin: 0;
+  padding: 0;
+  height: 100%; /* 确保 HTML, body, #app 都占满视口高度 */
+  width: 100%;  /* 确保 HTML, body, #app 都占满视口宽度 */
+  overflow: hidden; /* 防止出现不必要的滚动条 */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 一些 Element Plus 容器的微调 */
+.el-header {
+  --el-header-padding: 0 20px !important; /* 覆盖默认padding */
+  height: 60px; /* 固定头部高度 */
+  line-height: 60px; /* 保证文本垂直居中 */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08); /* 底部阴影 */
+  z-index: 100; /* 确保在最上层 */
+  position: relative; /* 配合z-index */
+}
+
+.el-aside {
+  --el-aside-width: 200px; /* 固定侧边栏宽度 */
+  background-color: #ffffff; /* 侧边栏改为白色 */
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.08); /* 右侧阴影 */
+  z-index: 90;
+}
+
+.el-main {
+  background-color: #f0f2f5; /* 主内容区背景色改为浅灰色 */
+  padding: 20px; /* 给内容区留出呼吸空间 */
+}
+
+/* Element Plus 菜单样式微调 */
+.el-menu {
+  border-right: none !important; /* 移除菜单右侧边框 */
+  height: 100%; /* 菜单占满侧边栏高度 */
+}
+
+.el-menu-item {
+  height: 50px;
+  line-height: 50px;
+  font-size: 16px;
+}
+
+.el-menu-item.is-active {
+  background-color: #ecf5ff !important; /* 选中项的背景色 */
+  color: #409EFF !important; /* 选中项的文字颜色 */
+}
+
+.el-menu-item:hover {
+  background-color: #f6f6f6 !important; /* 悬停背景色 */
+}

@@ -1,0 +1,26 @@
+{
+  "extends": "@vue/tsconfig/tsconfig.dom.json",
+  "include": [
+    "env.d.ts",
+    "src/**/*",
+    "src/**/*.vue",
+
+    // 【【【 核 心 同 步 】】】
+    // 确保这两个由插件自动生成的文件被 TS 包含
+    "auto-imports.d.ts",
+    "components.d.ts"
+  ],
+  "exclude": [
+    "src/**/__tests__/*",
+    // (我们不再需要那个补丁文件夹了)
+    "src/types"
+  ],
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    }
+  }
+}
