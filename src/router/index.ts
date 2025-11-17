@@ -1,7 +1,11 @@
+// file: src/router/index.ts
+// (V3.9 最终修复版)
+
 import { createRouter, createWebHistory } from 'vue-router';
 import type { RouteRecordRaw } from 'vue-router';
 import BasicLayout from '../layouts/Basiclayout.vue';
 
+// (这些是你已有的页面，保持不变)
 const routes: Array<RouteRecordRaw> = [
   {
     path: '/login',
@@ -14,46 +18,40 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('../views/Register.vue')
   },
   {
+    // (你的“基础布局”路由)
     path: '/',
     component: BasicLayout,
     redirect: '/match',
-    children: [ //
+    children: [ // (所有需要布局的页面都在这里)
       {
         path: 'match',
         name: 'Match',
         component: () => import('../views/PartnerMatchPage.vue')
       },
       {
-        // (查看“自己”的资料)
         path: 'profile',
         name: 'Profile',
         component: () => import('../views/UserProfilePage.vue')
       },
       {
-        // (查看“他人”的资料)
-        path: 'user/:id', // (e.g., /user/1, /user/2)
+        path: 'user/:id',
         name: 'UserProfile',
         component: () => import('../views/UserProfilePage.vue')
       },
-
-      // 【【【 案卷 #17：“施工”开始 】】】
-      // (这是我们上一轮 讨论的、
-      //  必须添加的两条“新道路”)
       {
-        // 1. “创建队伍”页面的“道路”
+        // (“战区 2”页面，已完成)
         path: 'team/create',
         name: 'TeamCreate',
         component: () => import('../views/TeamCreatePage.vue')
       },
       {
-        // 2. “创建”成功后“跳转”用的“道路”
-        path: 'team/:id', // (e.g., /team/1, /team/2)
+        // 【【【 V3.9 修复：路由指向“正确战区” 】】】
+        path: 'team/:id',
         name: 'TeamDetail',
-        // (我们“临时复用” UserProfilePage.vue，
-        //  未来再为它创建 TeamDetailPage.vue)
-        component: () => import('../views/UserProfilePage.vue')
+        // (旧: ../views/UserProfilePage.vue)
+        // (新: 我们在 V3.8 骨架中创建的新页面)
+        component: () => import('../views/TeamDetailPage.vue')
       }
-      // 【【【 案卷 #17：“施工”完毕 】】】
     ]
   },
 ];
@@ -63,7 +61,7 @@ const router = createRouter({
   routes
 });
 
-// (导航守卫保持不变)
+// (你强大的“导航守卫”，保持不变)
 router.beforeEach((to, from, next) => {
   const publicPages = ['/login', '/register'];
   const authRequired = !publicPages.includes(to.path);

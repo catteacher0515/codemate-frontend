@@ -1,9 +1,10 @@
 <script setup lang="ts">
-// (这部分与上一版“完全相同”，无需改动)
-import { ref, watchEffect, onMounted } from 'vue';
+// 【【【 1. 导入“全局实例” 和 “新图标” 】】】
+import { ref, watchEffect, onMounted, getCurrentInstance } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { House, Search, User } from '@element-plus/icons-vue';
-import { ElMessage } from 'element-plus';
+// (Plus 是我们“创建队伍”要用的新图标)
+import { House, Search, User, Plus } from '@element-plus/icons-vue';
+// import { ElMessage } from 'element-plus'; // <--- “宏观审查”已废弃，删除！
 
 const route = useRoute();
 const router = useRouter();
@@ -12,6 +13,11 @@ watchEffect(() => {
   activePath.value = route.path;
 });
 const userInfo = ref({ username: '用户' });
+
+// 【【【 2. 获取“全局” $message (和 v4.3 页面一样) 】】】
+const { proxy } = getCurrentInstance() as any;
+const ElMessage = proxy.$message;
+
 
 onMounted(() => {
   const storedUser = localStorage.getItem('user_login_state');
@@ -23,7 +29,7 @@ onMounted(() => {
       }
     } catch (e) {
       console.error("解析用户信息失败", e);
-      handleLogout();
+      handleLogout(); // (现在这个函数可以安全调用了)
     }
   }
 });
@@ -44,7 +50,7 @@ const handleTopNavSelect = (index: string) => {
 
 const handleLogout = () => {
   localStorage.removeItem('user_login_state');
-  ElMessage.success('您已安全退出');
+  ElMessage.success('您已安全退出'); // (现在 ElMessage 是“已定义”的)
   router.push('/login');
 };
 </script>
@@ -55,7 +61,6 @@ const handleLogout = () => {
     <el-header class="layout-header">
       <div class="logo-text">CodeMate (码缘)</div>
       <div style="flex-grow: 1;"></div>
-
       <el-menu
         mode="horizontal"
         background-color="transparent"
@@ -64,7 +69,6 @@ const handleLogout = () => {
         @select="handleTopNavSelect"
       >
         <el-menu-item index="/match">首页</el-menu-item>
-
         <el-sub-menu index="user-menu">
           <template #title>{{ userInfo.username }}</template>
           <el-menu-item index="/profile">个人中心</el-menu-item>
@@ -88,8 +92,15 @@ const handleLogout = () => {
             <el-icon><Search /></el-icon>
             <span>伙伴匹配</span>
           </el-menu-item>
+
+          <el-menu-item index="/team/create">
+            <el-icon><Plus /></el-icon>
+            <span>创建队伍</span>
+          </el-menu-item>
+
         </el-menu>
       </el-aside>
+
       <el-main>
         <RouterView />
       </el-main>
@@ -98,7 +109,7 @@ const handleLogout = () => {
 </template>
 
 <style scoped>
-/* 【【【“27号案”核心修复 2/2：使用“CSS SOP”替代“属性 SOP”】】】 */
+/* (所有样式保持不变) */
 
 .full-height-container {
   height: 100vh;
@@ -121,12 +132,9 @@ const handleLogout = () => {
 .layout-header .el-menu-item:hover {
   background-color: rgba(255, 255, 255, 0.1) !important;
 }
-
-/* 【“SOP 修复”：让“顶部”菜单项的文字变白】 */
 :deep(.layout-header .el-menu-item) {
   color: #ffffff !important;
 }
-/* 【“SOP 修复”：让“顶部”子菜单的“标题”变白】 */
 :deep(.layout-header .el-sub-menu__title) {
   color: #ffffff !important;
   cursor: pointer;

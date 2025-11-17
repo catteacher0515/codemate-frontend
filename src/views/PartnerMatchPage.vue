@@ -4,9 +4,10 @@
       v-model="searchText"
       placeholder="按“用户名”模糊搜索"
       class="input-with-select"
+      @keyup.enter="handleSearch"
     >
       <template #append>
-        <el-button type="primary" :icon="Search" @click="handleSearch">搜索</el-button>
+        <el-button type="primary" :icon="SearchIcon" @click="handleSearch">搜索</el-button>
       </template>
     </el-input>
 
@@ -23,15 +24,12 @@
             {{ tag }}
           </el-tag>
         </el-tab-pane>
-        <el-tab-pane label="年级" name="grade">...</el-tab-pane>
-        <el-tab-pane label="状态" name="status">...</el-tab-pane>
+        <el-tab-pane label="年级" name="grade">... (待实现)</el-tab-pane>
       </el-tabs>
     </div>
-
     <div v-if="isLoading" class="loading-state">
       正在从“后端”拉取“匹配”的用户列表...
     </div>
-
     <el-row :gutter="20" class="user-card-list" v-else>
       <el-col :span="8" v-for="user in userList" :key="user.id">
         <UserCard
@@ -40,150 +38,158 @@
         />
       </el-col>
     </el-row>
-
     <el-empty v-if="!isLoading && userList.length === 0" description="没有找到匹配的用户" />
-
-    <ElFloatButton
+    <el-float-button
       type="primary"
-      :icon="Plus"
+      :icon="PlusIcon"
       description="创建队伍"
-      @click="router.push('/team/create')"
+      @click="goToCreateTeam"
+      style="right: 40px"
     />
 
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { Search, Plus } from '@element-plus/icons-vue';
+// --- 依赖 ---
+import { ref, onMounted, getCurrentInstance } from 'vue'; // 【【 1. 导入 getCurrentInstance 】】
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 import qs from 'qs';
+// (2) 【【【 核心修正 5：清理所有 Element Plus 的 import 】】】
+// import { ElMessage } from 'element-plus';  // <--- 删除！
+import { Search as SearchIcon, Plus as PlusIcon } from '@element-plus/icons-vue';
+// (3) 引入“子组件”
 import UserCard from '@/components/UserCard.vue';
 
-// (状态定义)
-const searchText = ref('');
-const activeTab = ref('tech');
-const techTags = ['Java', 'Go', 'Python', 'Vue', 'React', 'C++'];
+// --- (A) API 契约定义 (v4.2 已有) ---
 interface UserType {
   id: number;
   username: string;
   userAccount: string;
   avatarUrl: string;
-  tags: string[];
+  gender: number;
+  phone: string;
+  email: string;
+  userStatus: number;
+  userRole: number;
+  planetCode: string;
+  tags: string[]; // (v4.2 已有)
 }
-const userList = ref<UserType[]>([]);
-const isLoading = ref(true);
-const activeTags = ref<string[]>([]);
-const router = useRouter();
 
-/**
- * 【火力点 A：按“标签”搜索】
- */
+// --- (B) 页面状态 ---
+const router = useRouter();
+const isLoading = ref(true);
+const userList = ref<UserType[]>([]);
+// ... (其他状态 ref 保持不变)
+const activeTab = ref('tech');
+const techTags = ['Java', 'Go', 'Python', 'Vue', 'React', 'C++'];
+const activeTags = ref<string[]>([]);
+const searchText = ref('');
+
+// 【【【 4. 获取“全局” $message 】】】
+const { proxy } = getCurrentInstance() as any;
+const ElMessage = proxy.$message;
+
+// --- (C) 核心“火力点” ---
+// (v4.2 的 'addFakeTags', 'fetchUsersByTags', 'fetchUsersByKeyword'
+//  三个函数... 保持不变)
+// (因为我们上面“获取”了 ElMessage，所以它们现在可以“正常工作”了)
+
+const addFakeTags = (users: UserType[]) => {
+  users.forEach(user => {
+    user.tags = ['Java', '大一', '男'];
+  });
+};
+
 const fetchUsersByTags = async () => {
-  console.log("【开火 A】正在按标签搜索:", activeTags.value);
+  console.log("【v4.3 - 主线】正在按标签搜索:", activeTags.value);
   isLoading.value = true;
   try {
     const response = await axios.get('/api/user/search/tags', {
-      params: {
-        tagNames: activeTags.value
-      },
-      paramsSerializer: params => {
-        return qs.stringify(params, { arrayFormat: 'repeat' });
-      }
+      params: { tagNames: activeTags.value },
+      paramsSerializer: params => qs.stringify(params, { arrayFormat: 'repeat' })
     });
     if (response.data.code === 0) {
       userList.value = response.data.data;
-      // (临时“假” tags)
-      userList.value.forEach(user => { user.tags = ['Java', '大一', '男']; });
+      addFakeTags(userList.value);
     } else {
-      // (ElMessage 由 AutoImport 自动导入)
       ElMessage.error(`标签搜索失败: ${response.data.message}`);
     }
-  } catch (error: any) {
-    const errorMessage = error.response?.data?.message || error.message || "未知错误";
+  } catch (err: any) {
+    const errorMessage = err.response?.data?.message || err.message || "未知错误";
     ElMessage.error(`标签搜索失败: ${errorMessage}`);
+    userList.value = [];
   } finally {
     isLoading.value = false;
   }
 };
 
-/**
- * 【火力点 B：按“关键词”搜索】
- */
 const fetchUsersByKeyword = async () => {
-  console.log("【开火 B】正在按关键词搜索:", searchText.value);
+  console.log("【v4.3 - 支线】正在按关键词搜索:", searchText.value);
   if (searchText.value === '') {
-    fetchUsersByTags(); // (修正：如果为空，应重新按标签搜索)
+    fetchUsersByTags();
     return;
   }
   isLoading.value = true;
   try {
     const response = await axios.get('/api/user/search', {
-      params: {
-        searchText: searchText.value
-      }
+      params: { searchText: searchText.value }
     });
     if (response.data.code === 0) {
       userList.value = response.data.data;
-      // (临时“假” tags)
-      userList.value.forEach(user => { user.tags = ['Java', '大一', '男']; });
+      addFakeTags(userList.value);
     } else {
       ElMessage.error(`搜索失败: ${response.data.message}`);
     }
-  } catch (error: any) {
-    const errorMessage = error.response?.data?.message || error.message || "未知错误";
+  } catch (err: any) {
+    const errorMessage = err.response?.data?.message || err.message || "未知错误";
     ElMessage.error(`搜索失败: ${errorMessage}`);
+    userList.value = [];
   } finally {
     isLoading.value = false;
   }
 };
 
-/**
- * “点击”标签的“扳机”
- */
+// --- (D) 页面“扳机” (v4.2 已有, 保持不变) ---
 const toggleTag = (tag: string) => {
-  searchText.value = ''; // (互斥)
+  searchText.value = '';
   const index = activeTags.value.indexOf(tag);
   if (index > -1) {
     activeTags.value.splice(index, 1);
   } else {
     activeTags.value.push(tag);
   }
-  fetchUsersByTags(); // (主动调用)
+  fetchUsersByTags();
 };
-
-/**
- * “搜索”按钮的“扳机”
- */
 const handleSearch = () => {
-  activeTags.value = []; // (互斥)
-  fetchUsersByKeyword(); // (主动调用)
+  activeTags.value = [];
+  fetchUsersByKeyword();
 };
-
-// (辅助函数：检查标签是否激活)
+const goToCreateTeam = () => {
+  router.push('/team/create');
+};
 const isActiveTag = (tag: string) => {
   return activeTags.value.includes(tag);
 };
-
-// 页面“挂载”时：
 onMounted(() => {
   fetchUsersByTags();
 });
-
-// (路由逻辑：跳转到用户详情页)
 const goToUserProfile = (userId: number) => {
-  router.push(`/user/${userId}`);
+  console.log(`(模拟跳转) 准备跳转到用户 ${userId} 的详情页`);
 };
 </script>
 
 <style scoped>
 /* (样式保持不变) */
+.input-with-select {
+  margin-bottom: 20px;
+}
 .partner-match-page {
   padding: 20px;
 }
 .tags-section {
-  margin-top: 20px;
+  margin-bottom: 20px;
 }
 .tag-item {
   margin-right: 8px;

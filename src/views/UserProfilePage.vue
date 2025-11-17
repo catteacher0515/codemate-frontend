@@ -1,238 +1,253 @@
 <template>
-  <div v-if="isLoading" class="loading-state">
-    <el-skeleton :rows="5" animated />
-  </div>
+  <div class="profile-page-v2">
 
-  <el-row v-else-if="user" :gutter="20">
-    <el-col :span="8">
-      <el-card class="user-card">
-        <div class="user-avatar-section">
-          <el-avatar :size="100" :src="user.avatarUrl || defaultAvatar" />
-          <h2>{{ user.username }}</h2>
-          <p class="bio">{{ user.bio || '这个人很懒，什么都没留下...' }}</p>
+    <el-row :gutter="20">
 
-          <el-button v-if="isMySelf" type="primary" @click="handleChangeAvatar">
-            更改头像
-          </el-button>
-          <p v-if="isMySelf" class="avatar-tip">
-            点击上传.jpg/png文件, 且不超过2MB.
-          </p>
-        </div>
-      </el-card>
-    </el-col>
-
-    <el-col :span="16">
-      <el-card class="profile-card">
-        <template #header>
-          <div class="card-header">
-            <span>详细信息</span>
+      <el-col :span="8">
+        <el-card class="box-card">
+          <template #header>
+            <div class="card-header">
+              <span>欢迎, {{ form.username || '用户' }}</span>
+            </div>
+          </template>
+          <div class="user-avatar-section">
+            <el-avatar :size="100" :src="form.avatarUrl" />
+            <el-input
+              v-model="form.avatarUrl"
+              placeholder="请输入新的头像 URL"
+              style="margin-top: 20px;"
+            />
             <el-button
-              v-if="!isEditing && isMySelf"
               type="primary"
-              link
-              @click="enterEditMode"
+              @click="handleUpdateAvatar"
+              style="margin-top: 10px;"
+              :loading="isAvatarLoading"
             >
-              编辑资料
+              仅更新头像
             </el-button>
           </div>
-        </template>
+        </el-card>
+      </el-col>
 
-        <el-descriptions v-if="!isEditing" :column="1" border>
-          <el-descriptions-item label-class-name="profile-label" label="用户名">
-            {{ user.username }}
-          </el-descriptions-item>
-          <el-descriptions-item label-class-name="profile-label" label="性别">
-            <el-tag :type="user.gender === 1 ? '' : 'danger'" size="small">
-              {{ user.gender === 1 ? '男' : (user.gender === 0 ? '女' : '未设置') }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label-class-name="profile-label" label="电话">
-            {{ user.phone || '未设置' }}
-          </el-descriptions-item>
-          <el-descriptions-item label-class-name="profile-label" label="邮箱">
-            {{ user.email || '未设置' }}
-          </el-descriptions-item>
-          <el-descriptions-item label-class-name="profile-label" label="标签">
-            <el-tag
-              v-for="tag in user.tags"
-              :key="tag"
-              type="success"
-              style="margin-right: 5px"
+      <el-col :span="16">
+        <el-card class="box-card">
+          <template #header>
+            <div class="card-header">
+              <span>详细信息</span>
+            </div>
+          </template>
+
+          <el-descriptions :column="1" border class="profile-descriptions">
+
+            <el-descriptions-item label="用户名">
+              <el-input v-model="form.username" />
+            </el-descriptions-item>
+
+            <el-descriptions-item label="用户账户">
+              <el-input v-model="form.userAccount" :disabled="true" />
+            </el-descriptions-item>
+
+            <el-descriptions-item label="性别">
+              <el-radio-group v-model="form.gender">
+                <el-radio :value="1">男</el-radio>
+                <el-radio :value="2">女</el-radio>
+                <el-radio :value="0">未知</el-radio>
+              </el-radio-group>
+            </el-descriptions-item>
+
+            <el-descriptions-item label="邮箱">
+              <el-input v-model="form.email" />
+            </el-descriptions-item>
+
+            <el-descriptions-item label="电话">
+              <el-input v-model="form.phone" />
+            </el-descriptions-item>
+
+            <el-descriptions-item label="个人简介">
+              <el-input v-model="form.bio" type="textarea" />
+            </el-descriptions-item>
+
+            <el-descriptions-item label="标签">
+              <el-input v-model="tagsInput" placeholder="e.g., Java,Vue (逗号分隔)" />
+            </el-descriptions-item>
+
+          </el-descriptions>
+
+          <div class="save-button-container">
+            <el-button
+              type="primary"
+              @click="handleSaveInfo"
+              :loading="isInfoLoading"
             >
-              {{ tag }}
-            </el-tag>
-            <span v-if="!user.tags || user.tags.length === 0">暂无标签</span>
-          </el-descriptions-item>
-        </el-descriptions>
+              保存所有更新
+            </el-button>
+          </div>
 
-        <el-form v-else ref="formRef" :model="editForm" label-width="80px">
-          <el-form-item label="用户名" prop="username">
-            <el-input v-model="editForm.username" />
-          </el-form-item>
-          <el-form-item label="性别" prop="gender">
-            <el-radio-group v-model="editForm.gender">
-              <el-radio :value="1">男</el-radio>
-              <el-radio :value="0">女</el-radio>
-            </el-radio-group>
-          </el-form-item>
-          <el-form-item label="电话" prop="phone">
-            <el-input v-model="editForm.phone" placeholder="请输入电话" />
-          </el-form-item>
-          <el-form-item label="邮箱" prop="email">
-            <el-input v-model="editForm.email" placeholder="请输入邮箱" />
-          </el-form-item>
+        </el-card>
+      </el-col>
+    </el-row>
 
-          <el-form-item>
-            <el-button type="primary" @click="handleSave" :loading="isSaving">保存</el-button>
-            <el-button @click="handleCancel">取消</el-button>
-          </el-form-item>
-        </el-form>
-      </el-card>
-    </el-col>
-  </el-row>
-
-  <el-empty v-else description="未找到该用户" />
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
-import { ElMessage, ElSkeleton } from 'element-plus';
+// --- 依赖 (v1.0 已有) ---
+import { ref, onMounted, getCurrentInstance } from 'vue';
 import axios from 'axios';
 
-// --- 状态定义 (State) ---
-const route = useRoute();
-const user = ref<any>(null);
-const editForm = ref<any>({});
-const isEditing = ref(false);
-const isLoading = ref(true);
-const isSaving = ref(false);
-const isMySelf = ref(false);
-const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png';
+// --- (A) 状态定义 ---
+const isLoading = ref(true); // (用于“开场”加载)
+const isInfoLoading = ref(false); // (用于“保存信息”按钮)
+const isAvatarLoading = ref(false); // (用于“保存头像”按钮)
+const error = ref<string | null>(null);
 
-// --- 数据流：核心逻辑 ---
+// (获取“全局” $message API)
+const { proxy } = getCurrentInstance() as any;
+const ElMessage = proxy.$message;
 
-/**
- * 智能的数据获取函数
- */
-const fetchUserData = async () => {
+// (v2.0 表单骨架 - 我们新增了 bio 和 tags)
+const form = ref({
+  id: 0,
+  username: '',
+  userAccount: '',
+  avatarUrl: '',
+  gender: 0,
+  phone: '',
+  email: '',
+  bio: '', // (v2.0 新增)
+  tags: [] as string[] // (v2.0 新增 - DTO 需要的数组)
+});
+
+// (v2.0 新增 - “标签”的中间输入)
+const tagsInput = ref("");
+
+// --- (B) 核心“火力点” 1 (开场) ---
+// (GET /api/user/current)
+const loadCurrentUserData = async () => {
+  console.log("【v2.0】正在“开场”：GET /api/user/current");
   isLoading.value = true;
-  isEditing.value = false;
-
-  const isViewingSelf = route.name === 'Profile';
-  isMySelf.value = isViewingSelf;
-
-  let apiUrl = '';
-  if (isViewingSelf) {
-    apiUrl = '/api/user/current';
-  } else {
-    const userId = route.params.id;
-    if (!userId) {
-      ElMessage.error('用户 ID 无效');
-      isLoading.value = false;
-      return;
-    }
-    apiUrl = `/api/user/${userId}`;
-  }
-
+  error.value = null;
   try {
-    const res = await axios.get(apiUrl);
-    if (res.data.code === 0) {
-      user.value = res.data.data;
+    const response = await axios.get('/api/user/current');
+    if (response.data.code === 0) {
+      const userData = response.data.data;
+      // (将“后端 UserVO”映射到“前端 form”)
+      form.value.id = userData.id;
+      form.value.username = userData.username;
+      form.value.userAccount = userData.userAccount;
+      form.value.avatarUrl = userData.avatarUrl;
+      form.value.gender = userData.gender;
+      form.value.phone = userData.phone;
+      form.value.email = userData.email;
+      // (v2.0 新增：回填 bio 和 tags)
+      form.value.bio = userData.bio || ''; // (假设后端有 bio)
+      form.value.tags = userData.tags || []; // (假设后端有 tags)
+      tagsInput.value = form.value.tags.join(','); // (将数组转回字符串)
     } else {
-      ElMessage.error(res.data.message || '获取用户信息失败');
-      user.value = null;
+      throw new Error(`后端业务失败: ${response.data.message}`);
     }
-  } catch (error: any) {
-    const errMsg = error.response?.data?.message || '获取用户信息失败';
-    ElMessage.error(errMsg);
-    user.value = null;
+  } catch (err: any) {
+    error.value = `加载用户信息失败: ${err.message}`;
+    ElMessage.error(error.value);
   } finally {
     isLoading.value = false;
   }
 };
 
-/**
- * 侦听“路由路径”
- */
-watch(
-  () => route.path,
-  () => {
-    fetchUserData();
-  },
-  { immediate: true } // 关键：在组件一加载时就立刻执行一次
-);
+// --- (C) 核心“火力点” 2 (互动 - 保存信息) ---
+// (PUT /api/user/updateinfo)
+const handleSaveInfo = async () => {
+  console.log("【v2.0】“保存信息”：PUT /api/user/updateinfo");
+  isInfoLoading.value = true;
 
-// --- (编辑逻辑：保持不变，仅供 isMySelf 时使用) ---
+  // (v2.0 DTO - 我们现在发送 bio 和 tags)
+  // (1. 处理标签)
+  form.value.tags = tagsInput.value
+    .split(',')
+    .map(tag => tag.trim())
+    .filter(tag => tag.length > 0);
 
-const enterEditMode = () => {
-  editForm.value = { ...user.value };
-  isEditing.value = true;
-};
+  // (2. 组装 DTO)
+  const userUpdateDTO = {
+    username: form.value.username,
+    bio: form.value.bio, // (v2.0 新增)
+    email: form.value.email,
+    gender: form.value.gender,
+    avatarUrl: form.value.avatarUrl,
+    // tags: form.value.tags, // (v2.0 新增)
+    // (phone 也不在 DTO 里)
+  };
 
-const handleCancel = () => {
-  isEditing.value = false;
-  editForm.value = {};
-};
-
-const handleSave = async () => {
-  isSaving.value = true;
   try {
-    const res = await axios.put('/api/user/updateinfo', editForm.value);
-    if (res.data.code === 0) {
-      ElMessage.success('资料更新成功');
-      Object.assign(user.value, editForm.value);
-      isEditing.value = false;
+    const response = await axios.put('/api/user/updateinfo', userUpdateDTO);
+    if (response.data.code === 0 && response.data.data === true) {
+      ElMessage.success('个人资料更新成功！');
+      // (重新加载，以防万一)
+      await loadCurrentUserData();
     } else {
-      ElMessage.error(res.data.message);
+      throw new Error(`后端业务失败: ${response.data.message}`);
     }
-    // 【【【 案 件 修 复 】】】
-    // 删除了  中多余的 "t)"
-  } catch (error: any) {
-    const errMsg = error.response?.data?.message || '请求失败';
-    ElMessage.error(errMsg);
+  } catch (err: any) {
+    ElMessage.error(`保存失败: ${err.message}`);
   } finally {
-    isSaving.value = false;
+    isInfoLoading.value = false;
   }
 };
 
-const handleChangeAvatar = () => {
-  ElMessage.info('“更改头像”功能正在开发中...');
+// --- (D) 核心“火力点” 3 (互动 - 保存头像) ---
+// (PUT /api/user/update/avatar)
+const handleUpdateAvatar = async () => {
+  console.log("【v2.0】“保存头像”：PUT /api/user/update/avatar");
+  isAvatarLoading.value = true;
+
+  // (严格遵守“契约”)
+  const avatarUpdateDTO = {
+    userId: form.value.id,
+    avatarUrl: form.value.avatarUrl
+  };
+
+  try {
+    const response = await axios.put('/api/user/update/avatar', avatarUpdateDTO);
+    if (response.data.code === 0 && response.data.data === true) {
+      ElMessage.success('头像更新成功！');
+    } else {
+      throw new Error(`后端业务失败: ${response.data.message}`);
+    }
+  } catch (err: any) {
+    ElMessage.error(`头像更新失败: ${err.message}`);
+  } finally {
+    isAvatarLoading.value = false;
+  }
 };
+
+// --- (E) 页面“扳机” ---
+onMounted(() => {
+  loadCurrentUserData();
+});
 </script>
 
 <style scoped>
-.profile-card {
-  margin-bottom: 20px;
+/* (v2.0 样式) */
+.profile-page-v2 .card-header {
+  font-weight: bold;
+  font-size: 1.1em;
 }
-.user-card .user-avatar-section {
+.user-avatar-section {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px;
+  justify-content: center;
 }
-.user-card h2 {
-  margin: 15px 0 5px;
-}
-.user-card .bio {
-  color: #888;
-  font-size: 14px;
+.profile-descriptions {
   margin-bottom: 20px;
 }
-.user-card .avatar-tip {
-  font-size: 12px;
-  color: #aaa;
-  margin-top: 10px;
-}
-.card-header {
+.save-button-container {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-:deep(.el-descriptions__label.profile-label) {
-  width: 100px;
+  justify-content: flex-end;
 }
 .loading-state {
-  padding: 20px;
+  padding: 40px;
+  text-align: center;
+  color: #888;
 }
 </style>

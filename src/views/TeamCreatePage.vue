@@ -1,215 +1,208 @@
 <template>
-  <div class="team-create-page">
-    <h2>创建队伍</h2>
-    <el-form
-      ref="formRef"
-      :model="formData"
-      :rules="formRules"
-      label-width="100px"
-      label-position="top"
-      class="create-form"
-    >
-      <el-form-item label="队伍名称" prop="name">
-        <el-input
-          v-model="formData.name"
-          placeholder="请输入队伍名称"
-          maxlength="20"
-          show-word-limit
-        />
-      </el-form-item>
+  <div class="minimal-page">
+    <h1>“重塑”创建队伍页 (最小可行版)</h1>
+    <p>
+      目标：使用 `POST /api/team/create` 契约，提交表单。
+    </p>
 
-      <el-form-item label="队伍描述" prop="description">
-        <el-input
-          v-model="formData.description"
-          type="textarea"
-          :rows="3"
-          placeholder="请输入队伍描述（选填）"
-          maxlength="255"
-          show-word-limit
-        />
-      </el-form-item>
+    <div class="form-group">
+      <label for="name">队伍名称:</label>
+      <input id="name" v-model.trim="form.name" placeholder="输入队伍名称" />
+    </div>
+    <div class="form-group">
+      <label for="description">队伍描述:</label>
+      <textarea id="description" v-model="form.description" placeholder="输入队伍描述"></textarea>
+    </div>
+    <div class="form-group">
+      <label for="maxNum">最大人数:</label>
+      <input id="maxNum" v-model.number="form.maxNum" type="number" min="2" max="10" />
+    </div>
+    <div class="form-group">
+      <label for="expireTime">过期时间:</label>
+      <input id="expireTime" v-model="form.expireTime" type="datetime-local" />
+    </div>
+    <div class="form-group">
+      <label for="status">队伍状态:</label>
+      <select id="status" v-model.number="form.status">
+        <option value="0">公开</option>
+        <option value="1">私有</option>
+        <option value="2">加密</option>
+      </select>
+    </div>
+    <div v-if="form.status === 2" class="form-group password-field">
+      <label for="password">队伍密码 (加密时必填):</label>
+      <input id="password" v-model="form.password" type="password" />
+    </div>
+    <div class="form-group">
+      <label for="tags">标签 (逗号分隔):</label>
+      <input id="tags" v-model="tagsInput" placeholder="e.g., Java,Vue,Spring" />
+    </div>
 
-      <el-form-item label="队伍人数" prop="maxNum">
-        <el-input-number v-model="formData.maxNum" :min="2" :max="5" />
-      </el-form-item>
+    <button @click="handleCreate" class="fetch-button">
+      【点击这里】创建队伍
+    </button>
 
-      <el-form-item label="过期时间" prop="expireTime">
-        <el-date-picker
-          v-model="formData.expireTime"
-          type="datetime"
-          placeholder="选择过期时间（选填）"
-          value-format="YYYY-MM-DDTHH:mm:ss"
-          :disabled-date="disabledBeforeToday"
-        />
-      </el-form-item>
+    <hr>
 
-      <el-form-item label="队伍状态" prop="status">
-        <el-radio-group v-model="formData.status">
-          <el-radio :label="0">公开</el-radio>
-          <el-radio :label="1">私有</el-radio>
-          <el-radio :label="2">加密</el-radio>
-        </el-radio-group>
-      </el-form-item>
-
-      <el-form-item
-        v-if="formData.status === 2"
-        label="队伍密码"
-        prop="password"
-      >
-        <el-input
-          v-model="formData.password"
-          type="password"
-          placeholder="请输入至少4位密码"
-          show-password
-        />
-      </el-form-item>
-
-      <el-form-item label="队伍标签 (最多3个)" prop="tags">
-        <el-select
-          v-model="formData.tags"
-          multiple
-          :multiple-limit="3"
-          filterable
-          allow-create
-          default-first-option
-          placeholder="输入标签后按回车"
-          style="width: 100%;"
-        >
-        </el-select>
-      </el-form-item>
-
-      <el-form-item>
-        <el-button type="primary" @click="handleSubmit" :loading="isLoading">
-          立即创建
-        </el-button>
-        <el-button @click="handleReset">重置</el-button>
-      </el-form-item>
-
-    </el-form>
+    <div v-if="isLoading">
+      <h3>状态：正在创建...</h3>
+    </div>
+    <div v-if="error">
+      <h3>状态：创建失败！</h3>
+      <pre class="error-box">{{ error }}</pre>
+    </div>
+    <div v-if="responseData">
+      <h3>状态：创建成功！</h3>
+      <p>后端返回的新队伍 ID 如下：</p>
+      <pre class="data-box">{{ responseData }}</pre>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
+// --- 依赖 ---
+// 【【【 v1.2 核心修复：移除未使用的 'computed' 】】】
 import { ref } from 'vue';
-import { useRouter } from 'vue-router';
 import axios from 'axios';
-import type { FormInstance, FormRules } from 'element-plus';
-
-// (ElMessage 是由 auto-import 自动导入的，无需手动 import)
+import { useRouter } from 'vue-router';
 
 // --- 状态定义 ---
-
-const router = useRouter();
-const formRef = ref<FormInstance>(); // (用于表单校验)
-const isLoading = ref(false); // (防止重复提交)
-
-// (1) 表单数据 (匹配 TeamCreateDTO)
-const formData = ref({
-  name: '',
-  description: '',
-  maxNum: 3,
-  expireTime: null, // (允许为空)
+// (1) 表单数据
+const form = ref({
+  name: "我的第三支队伍", // (又改个名)
+  description: "这是一个很棒的队伍",
+  maxNum: 5,
+  expireTime: "",
   status: 0,
-  password: '',
-  tags: [],
+  password: "",
+  tags: [] as string[]
 });
 
-// (2) 表单校验规则
-const formRules = ref<FormRules>({
-  name: [
-    { required: true, message: '队伍名称不能为空', trigger: 'blur' },
-    { min: 3, message: '队伍名称至少3个字', trigger: 'blur' },
-  ],
-  maxNum: [
-    { required: true, message: '必须设置队伍人数', trigger: 'blur' },
-  ],
-  password: [
-    // (自定义一个校验规则，匹配后端)
-    { validator: (rule, value, callback) => {
-        if (formData.value.status === 2 && (value === null || value.length < 4)) {
-          callback(new Error('加密队伍必须设置至少4位密码'));
-        } else {
-          callback();
-        }
-      }, trigger: 'blur' }
-  ],
-  tags: [
-    { type: 'array', min: 1, message: '至少设置一个标签', trigger: 'change' }
-  ]
-});
+// (2) 中间状态
+const tagsInput = ref("Java,Vue");
 
-// --- 辅助函数 ---
+// (3) 响应状态
+const isLoading = ref(false);
+const error = ref<string | null>(null);
+const responseData = ref<any | null>(null);
+const router = useRouter();
 
-/**
- * 辅助函数：禁用今天之前的日期
- */
-const disabledBeforeToday = (time: Date) => {
-  // (设置 time 的时分秒为 0，确保“今天”可选)
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return time.getTime() < today.getTime();
-};
-
-// --- 核心行动 ---
-
-/**
- * 【行动 A：提交表单】
- */
-const handleSubmit = async () => {
-  if (!formRef.value) return; // (类型守卫)
+// --- 核心“火力点” (v1.1 胜利跳转版) ---
+const handleCreate = async () => {
+  // (重置状态)
   isLoading.value = true;
+  error.value = null;
+  responseData.value = null;
+
+  // (数据处理)
+  form.value.tags = tagsInput.value
+    .split(',')
+    .map(tag => tag.trim())
+    .filter(tag => tag.length > 0);
+  if (form.value.status === 2 && !form.value.password) {
+    error.value = "“加密”队伍必须设置密码！";
+    isLoading.value = false;
+    return;
+  }
+  if (form.value.status !== 2) {
+    form.value.password = "";
+  }
 
   try {
-    // (1. 触发表单校验)
-    await formRef.value.validate();
+    console.log("【v1.2】正在启动 API 请求...");
+    console.log("【v1.2】发送的数据 (Body):", form.value);
 
-    // (2. 发送 POST 请求到后端)
-    const response = await axios.post('/api/team/create', formData.value);
+    // (API 调用)
+    const response = await axios.post('/api/team/create', form.value);
 
-    // (3. 处理后端响应)
-    if (response.data.code === 0) {
-      ElMessage.success('队伍创建成功！');
-      // (跳转到“我的队伍”页面，或者伙伴匹配页)
-      // (我们先假设跳回伙伴匹配页)
-      router.push('/partner/match');
+    // (业务失败)
+    if (response.data.code !== 0) {
+      console.error("【v1.2】API 业务失败:", response.data);
+      throw new Error(`后端业务失败: ${response.data.message} (Code: ${response.data.code})`);
+    }
+
+    // --- 成功！---
+    console.log("【v1.2】API 成功:", response.data);
+    isLoading.value = false;
+    responseData.value = response.data.data;
+
+    // (胜利跳转)
+    const newTeamId = response.data.data;
+    setTimeout(() => {
+      router.push(`/team/${newTeamId}`);
+    }, 2000);
+
+  } catch (err: any) {
+    // (失败)
+    console.error("【v1.2】API 捕获到错误:", err);
+    isLoading.value = false;
+
+    if (err.response && err.response.data) {
+      error.value = `后端返回错误: ${JSON.stringify(err.response.data)}`;
     } else {
-      // (显示后端返回的业务错误)
-      ElMessage.error(`创建失败: ${response.data.message || '未知错误'}`);
+      error.value = err.message || '一个未知的网络错误发生了';
     }
-
-  } catch (error: any) {
-    // (处理网络错误或 axios 错误)
-    if (error.response) {
-      // (后端返回了非 2xx 状态码，比如 401 未登录)
-      ElMessage.error(`创建失败: ${error.response.data.message || '服务器错误'}`);
-    } else if (error.name !== 'ValidateError') {
-      // (如果错误不是“表单校验失败”，则显示网络错误)
-      ElMessage.error('网络请求失败');
-    }
-  } finally {
-    isLoading.value = false; // (无论成功失败，都解除 loading 状态)
   }
 };
-
-/**
- * 【行动 B：重置表单】
- */
-const handleReset = () => {
-  if (!formRef.value) return;
-  formRef.value.resetFields();
-};
-
 </script>
 
 <style scoped>
-.team-create-page {
-  max-width: 600px;
-  margin: 20px auto;
+/* (v1.0 样式 - 保持不变) */
+.minimal-page {
   padding: 20px;
-  border: 1px solid #eee;
-  border-radius: 8px;
+  font-family: Arial, sans-serif;
+  line-height: 1.6;
 }
-.create-form {
-  margin-top: 20px;
+.form-group {
+  margin-bottom: 15px;
+}
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 400px;
+  padding: 8px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+.form-group textarea {
+  height: 80px;
+  resize: vertical;
+}
+.password-field input {
+  border: 1px solid #d8000c;
+}
+.fetch-button {
+  padding: 10px 15px;
+  font-size: 16px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.fetch-button:hover {
+  background-color: #0056b3;
+}
+.error-box {
+  background-color: #ffebeb;
+  color: #d8000c;
+  border: 1px solid #d8000c;
+  padding: 10px;
+  white-space: pre-wrap;
+}
+.data-box {
+  background-color: #e6f7ff;
+  color: #0056b3;
+  border: 1px solid #007bff;
+  padding: 10px;
+  white-space: pre-wrap;
+}
+hr {
+  margin: 20px 0;
 }
 </style>
