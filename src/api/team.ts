@@ -3,7 +3,7 @@
 
 import service from '@/utils/request'; // (V3.8 确认 [cite: V3.8 战区修正 from message 38])
 // (V3.x 修复: 导入所有类型)
-import type {TeamVO, TeamSearchDTO, TeamPageVO, TeamJoinDTO} from '@/models/team';
+import type {TeamVO, TeamSearchDTO, TeamPageVO, TeamJoinDTO, TeamInviteDTO} from '@/models/team';
 
 /**
  * 【【 案卷 #17：调用后端 API 】】
@@ -46,5 +46,17 @@ export const joinTeam = (joinParams: TeamJoinDTO): Promise<boolean> => {
     method: 'POST',
     // 【【 V4.x 修复：teamId 必须在 'data' (Body) 中 】】
     data: joinParams,
+  });
+};
+
+/**
+ * 【【【 案卷 #005：SOP (邀请用户) 】】】
+ * (SOP 1 契约: POST /api/team/invite)
+ */
+export const inviteUser = (inviteParams: TeamInviteDTO): Promise<boolean> => {
+  return service({
+    url: '/team/invite',
+    method: 'POST',
+    data: inviteParams,
   });
 };

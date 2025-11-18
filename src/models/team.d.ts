@@ -4,6 +4,15 @@
 import type { UserType } from './user';
 
 /**
+ * 【【【 案卷 #005：邀请用户合约 (DTO) 】】】
+ * (SOP 1 契约: POST /api/team/invite)
+ */
+export type TeamInviteDTO = {
+  teamId: number | string;
+  targetUserAccount: string;
+};
+
+/**
  * 【【【 案卷 #004：加入队伍合约 (DTO) 】】】
  * (SOP 1 契约: POST /api/team/join)
  */

@@ -1,27 +1,29 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router'; // (V4.x 新增)
-// 【【【 V4.x 修复：导入“新工具” 和 “新 API 探员” 】】】
-import { getTeamDetailsById, joinTeam } from '@/api/team';
-import type { TeamVO, TeamJoinDTO } from '@/models/team';
-import { ElMessage, ElMessageBox, ElButton } from 'element-plus'; // (V4.x 新增)
+import { useRoute, useRouter } from 'vue-router';
+// 导入 API 和 类型
+import { getTeamDetailsById, joinTeam, inviteUser } from '@/api/team';
+import type { TeamVO, TeamJoinDTO, TeamInviteDTO } from '@/models/team';
+import { ElMessage, ElMessageBox, ElButton } from 'element-plus';
 
 const route = useRoute();
-const router = useRouter(); // (V4.x 新增)
+const router = useRouter();
 const teamDetails = ref<TeamVO>();
 const loading = ref(true);
 
 /**
- * 【【【 案卷 #17：SOP (获取详情) 】】】
+ * 1. 加载详情 (核心逻辑)
  */
 const loadDetails = async () => {
   loading.value = true;
   try {
+    // 从 URL 获取 teamId
     const teamId = route.params.id as string;
     if (!teamId) {
       ElMessage.error('队伍 ID 不存在');
       return;
     }
+    // 调用“获取详情” API
     teamDetails.value = await getTeamDetailsById(teamId);
   } catch (error) {
     console.error("【案卷 #17】获取队伍详情失败:", error);
@@ -30,91 +32,110 @@ const loadDetails = async () => {
   }
 };
 
-// (页面加载时，执行)
+// 页面加载时执行
 onMounted(loadDetails);
 
-
 /**
- * 【【【 案卷 #004：SOP (V4.x 加入队伍) 】】】
- * (SOP 1 核心逻辑: 处理“公开”  与“加密” )
+ * 2. 加入队伍 (核心逻辑)
  */
 const handleJoinTeam = async () => {
   const team = teamDetails.value;
-  if (!team) return; // (安全校验)
+  if (!team) return;
 
-  // 1. (SOP 1 逻辑) 检查“加密”
-  if (team.status === 2) { // 2-加密
+  if (team.status === 2) { // 加密
     try {
-      // 2. (SOP 1 逻辑) 索要“密码”
       const { value: password } = await ElMessageBox.prompt(
-        '该队伍已加密，请输入密码:',
-        '加入队伍',
-        {
-          confirmButtonText: '确认加入',
-          cancelButtonText: '取消',
-          inputType: 'password',
-        }
+        '该队伍已加密，请输入密码:', '加入队伍',
+        { confirmButtonText: '确认', cancelButtonText: '取消', inputType: 'password' }
       );
-
-      // 3. (SOP 1 契约) 执行“加密加入”
       await executeJoin({ teamId: team.id, password: password || '' });
-
     } catch (e) {
-      // (用户点击了“取消”)
-      ElMessage.info('已取消加入');
+      // 取消
     }
   } else {
-    // 3. (SOP 1 逻辑) 执行“公开加入”
     await executeJoin({ teamId: team.id });
   }
 };
 
-/**
- * 【【【 案卷 #004：V4.x 辅助函数 (执行 API) 】】】
- */
 const executeJoin = async (params: TeamJoinDTO) => {
   try {
     const result = await joinTeam(params);
     if (result) {
       ElMessage.success('加入成功！');
-      // (V4.x 优化：加入成功后，我们必须“重新加载”详情页，)
-      // (因为“成员列表” 已经变了)
-      await loadDetails();
+      await loadDetails(); // 刷新数据
     }
   } catch (error) {
-    console.error("【案卷 #004】加入队伍失败:", error);
+    // 错误已由拦截器处理
   }
 };
 
+/**
+ * 3. 邀请用户 (核心逻辑 - 案卷 #005)
+ */
+const handleInviteUser = async () => {
+  if (!teamDetails.value) return;
+  try {
+    const { value: targetAccount } = await ElMessageBox.prompt(
+      '请输入要邀请的用户账号:', '邀请用户',
+      { confirmButtonText: '邀请', cancelButtonText: '取消' }
+    );
+    if (!targetAccount) return;
+
+    const result = await inviteUser({
+      teamId: teamDetails.value.id,
+      targetUserAccount: targetAccount
+    });
+
+    if (result) {
+      ElMessage.success(`成功邀请 ${targetAccount}！`);
+      await loadDetails();
+    }
+  } catch (e) {
+    // 取消或错误
+  }
+};
 </script>
 
 <template>
   <div v-loading="loading" class="team-detail-container">
     <div v-if="teamDetails">
-      <h1>{{ teamDetails.name }}</h1>
-      <p>队长: {{ teamDetails.teamCaptain.username }}</p>
-      <p>描述: {{ teamDetails.description }}</p>
+      <h1 style="margin-bottom: 10px;">{{ teamDetails.name }}</h1>
 
-      <h3>成员 ({{ teamDetails.members.length }} / {{ teamDetails.maxNum }})</h3>
-      <ul>
-        <li v-for="member in teamDetails.members" :key="member.id">
-          {{ member.username }}
-        </li>
-      </ul>
+      <el-descriptions bordered :column="1">
+        <el-descriptions-item label="队长">{{ teamDetails.teamCaptain.username }}</el-descriptions-item>
+        <el-descriptions-item label="描述">{{ teamDetails.description }}</el-descriptions-item>
+        <el-descriptions-item label="人数">{{ teamDetails.members.length }} / {{ teamDetails.maxNum }}</el-descriptions-item>
+        <el-descriptions-item label="状态">
+          <el-tag v-if="teamDetails.status === 0" type="success">公开</el-tag>
+          <el-tag v-else type="danger">加密</el-tag>
+        </el-descriptions-item>
+      </el-descriptions>
 
       <div style="margin-top: 20px;">
-        <el-button
-          type="primary"
-          @click="handleJoinTeam"
-          size="large"
-        >
-          加入队伍
-        </el-button>
+        <h3>成员列表</h3>
+        <el-table :data="teamDetails.members" stripe style="width: 100%">
+          <el-table-column prop="username" label="昵称" />
+          <el-table-column prop="userAccount" label="账号" />
+        </el-table>
       </div>
 
+      <div style="margin-top: 30px; display: flex; gap: 15px;">
+        <el-button type="primary" @click="handleJoinTeam">加入队伍</el-button>
+        <el-button type="success" @click="handleInviteUser">邀请用户</el-button>
+      </div>
     </div>
+
     <div v-else-if="!loading">
-      <p>未找到队伍信息。</p>
+      <el-empty description="未找到队伍信息" />
     </div>
   </div>
 </template>
+
+<style scoped>
+.team-detail-container {
+  max-width: 800px;
+  margin: 20px auto;
+  padding: 20px;
+  background: #fff; /* 加上背景色更容易区分 */
+}
+</style>
