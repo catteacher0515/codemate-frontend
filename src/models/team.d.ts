@@ -4,6 +4,15 @@
 import type { UserType } from './user';
 
 /**
+ * 【【【 案卷 #004：加入队伍合约 (DTO) 】】】
+ * (SOP 1 契约: POST /api/team/join)
+ */
+export type TeamJoinDTO = {
+  teamId: number | string;
+  password?: string; // 可选
+};
+
+/**
  * 【【【 案卷 #18：队伍搜索合约 (DTO) 】】】
  * (基于 TeamSearchDTO.java)
  */

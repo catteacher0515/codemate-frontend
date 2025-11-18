@@ -3,7 +3,7 @@
 
 import service from '@/utils/request'; // (V3.8 确认 [cite: V3.8 战区修正 from message 38])
 // (V3.x 修复: 导入所有类型)
-import type { TeamVO, TeamSearchDTO, TeamPageVO } from '@/models/team';
+import type {TeamVO, TeamSearchDTO, TeamPageVO, TeamJoinDTO} from '@/models/team';
 
 /**
  * 【【 案卷 #17：调用后端 API 】】
@@ -28,5 +28,23 @@ export const searchTeams = (searchParams: TeamSearchDTO): Promise<TeamPageVO> =>
     url: '/team/list/page',
     method: 'POST',     // <-- 确保这是 POST
     data: searchParams, // <-- 确保使用 'data'
+  });
+};
+
+/**
+ * 【【【 案卷 #004：SOP (V4.x 修复 - 404 案) 】】】
+ * (SOP 1 契约: POST /api/team/join)
+ * (“案犯” 在于 url 拼写错误)
+ */
+export const joinTeam = (joinParams: TeamJoinDTO): Promise<boolean> => {
+  // (SOP 1 契约: 返回 BaseResponse<Boolean>)
+  // (V3.8 拦截器 会自动解包 data)
+  return service({
+    // 【【 V4.x 修复：URL 必须是静态的 "/team/join" 】】
+    url: '/team/join',
+    // 【【 V4.x 修复：方法必须是 POST 】】
+    method: 'POST',
+    // 【【 V4.x 修复：teamId 必须在 'data' (Body) 中 】】
+    data: joinParams,
   });
 };
