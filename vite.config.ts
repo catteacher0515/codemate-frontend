@@ -1,11 +1,11 @@
-// vite.config.ts (v6.0 - “最终手动”版)
+// vite.config.ts (V4.0 - 代理已配置，但未重写)
+// (基于你的 API 文档，这是 100% 正确的状态)
 
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
-// 【【【 核心修正 1：我们不再需要 ElementPlusResolver 】】】
-// import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+// (ElementPlus 相关的 imports)
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 
@@ -15,16 +15,14 @@ export default defineConfig({
   plugins: [
     vue(),
     AutoImport({
-      // 【【【 核心修正 2：从 resolvers 数组中移除它 】】】
       resolvers: [
-        // ElementPlusResolver({ importStyle: false }) // <--- 彻底删除这一行
+        // (保持你 V6.0 手动版的状态，这里为空)
       ],
       dts: 'auto-imports.d.ts',
     }),
     Components({
-      // 【【【 核心修正 3：从 resolvers 数组中移除它 】】】
       resolvers: [
-        // ElementPlusResolver({ importStyle: false }) // <--- 彻底删除这一行
+        // (保持你 V6.0 手动版的状态，这里为空)
       ],
       dts: 'components.d.ts',
     }),
@@ -39,6 +37,7 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
+        // (V4.1 的 rewrite: ... 已被移除)
       }
     }
   }

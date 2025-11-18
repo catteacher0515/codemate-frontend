@@ -1,10 +1,12 @@
+<!-- file: src/layouts/Basiclayout.vue -->
+<!-- (V4.0 案卷 #18-B 修复版) -->
+
 <script setup lang="ts">
 // 【【【 1. 导入“全局实例” 和 “新图标” 】】】
 import { ref, watchEffect, onMounted, getCurrentInstance } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-// (Plus 是我们“创建队伍”要用的新图标)
-import { House, Search, User, Plus } from '@element-plus/icons-vue';
-// import { ElMessage } from 'element-plus'; // <--- “宏观审查”已废弃，删除！
+// 【【 V4.0 修复：导入 'Grid' 图标用于“搜索队伍” 】】
+import { House, Search, User, Plus, Grid } from '@element-plus/icons-vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -58,6 +60,7 @@ const handleLogout = () => {
 <template>
   <el-container class="full-height-container">
 
+    <!-- (Header 保持不变) -->
     <el-header class="layout-header">
       <div class="logo-text">CodeMate (码缘)</div>
       <div style="flex-grow: 1;"></div>
@@ -84,13 +87,23 @@ const handleLogout = () => {
           class="el-menu-vertical-demo"
           router
         >
-          <el-menu-item index="/match">
-            <el-icon><House /></el-icon>
-            <span>主页</span>
-          </el-menu-item>
+          <!--
+            【【【 V4.0 修复 (Bug) 】】】
+            (你粘贴的代码 [cite: user's provided code in message 59] 有 2 个 "index=/match" [cite: user's provided code in message 59])
+            (我们保留 "伙伴匹配" [cite: user's provided code in message 59]，因为它对应 'PartnerMatchPage.vue' [cite: image_1ad1d1.png])
+            (我们删除 "主页" [cite: user's provided code in message 59]，因为它 1. 冗余 2. 路由冲突)
+          -->
+          <!-- (已删除) <el-menu-item index="/match"><el-icon><House/></el-icon>...</el-menu-item> -->
+
           <el-menu-item index="/match">
             <el-icon><Search /></el-icon>
             <span>伙伴匹配</span>
+          </el-menu-item>
+
+          <!-- 【【【 案卷 #18-B：V4.0 修复 (新入口) 】】】 -->
+          <el-menu-item index="/team/search">
+            <el-icon><Grid /></el-icon>
+            <span>搜索队伍</span>
           </el-menu-item>
 
           <el-menu-item index="/team/create">
