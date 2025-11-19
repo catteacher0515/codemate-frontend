@@ -94,3 +94,15 @@ export const updateTeam = (updateParams: TeamUpdateDTO): Promise<boolean> => {
     data: updateParams,
   });
 };
+
+/**
+ * 【案卷 #008】踢出成员
+ * (SOP 1 契约: POST /api/team/kick)
+ */
+export const kickTeamMember = (params: { teamId: number | string; targetUserAccount: string }): Promise<boolean> => {
+  return service({
+    url: '/team/kick',
+    method: 'POST',
+    data: params,
+  });
+};
