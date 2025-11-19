@@ -4,6 +4,14 @@
 import type { UserType } from './user';
 
 /**
+ * 【【【 案卷 #006：退出队伍合约 (DTO) 】】】
+ * (SOP 1 契约: POST /api/team/quit)
+ */
+export type TeamQuitDTO = {
+  teamId: number | string;
+};
+
+/**
  * 【【【 案卷 #005：邀请用户合约 (DTO) 】】】
  * (SOP 1 契约: POST /api/team/invite)
  */

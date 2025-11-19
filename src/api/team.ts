@@ -3,7 +3,14 @@
 
 import service from '@/utils/request'; // (V3.8 确认 [cite: V3.8 战区修正 from message 38])
 // (V3.x 修复: 导入所有类型)
-import type {TeamVO, TeamSearchDTO, TeamPageVO, TeamJoinDTO, TeamInviteDTO} from '@/models/team';
+import type {
+  TeamVO,
+  TeamSearchDTO,
+  TeamPageVO,
+  TeamJoinDTO,
+  TeamInviteDTO,
+  TeamQuitDTO
+} from '@/models/team';
 
 /**
  * 【【 案卷 #17：调用后端 API 】】
@@ -58,5 +65,20 @@ export const inviteUser = (inviteParams: TeamInviteDTO): Promise<boolean> => {
     url: '/team/invite',
     method: 'POST',
     data: inviteParams,
+  });
+};
+
+// (在 src/api/team.ts 中添加)
+// (更新 import，引入 TeamQuitDTO)
+
+/**
+ * 【【【 案卷 #006：SOP (退出队伍) 】】】
+ * (SOP 1 契约: POST /api/team/quit)
+ */
+export const quitTeam = (quitParams: TeamQuitDTO): Promise<boolean> => {
+  return service({
+    url: '/team/quit',
+    method: 'POST',
+    data: quitParams,
   });
 };
