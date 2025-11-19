@@ -9,7 +9,7 @@ import type {
   TeamPageVO,
   TeamJoinDTO,
   TeamInviteDTO,
-  TeamQuitDTO
+  TeamQuitDTO, TeamUpdateDTO
 } from '@/models/team';
 
 /**
@@ -80,5 +80,17 @@ export const quitTeam = (quitParams: TeamQuitDTO): Promise<boolean> => {
     url: '/team/quit',
     method: 'POST',
     data: quitParams,
+  });
+};
+
+/**
+ * 【【【 案卷 #007：SOP (更新队伍) 】】】
+ * (SOP 1 契约: POST /api/team/update)
+ */
+export const updateTeam = (updateParams: TeamUpdateDTO): Promise<boolean> => {
+  return service({
+    url: '/team/update',
+    method: 'POST',
+    data: updateParams,
   });
 };
