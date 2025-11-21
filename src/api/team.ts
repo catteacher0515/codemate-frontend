@@ -9,7 +9,7 @@ import type {
   TeamPageVO,
   TeamJoinDTO,
   TeamInviteDTO,
-  TeamQuitDTO, TeamUpdateDTO
+  TeamQuitDTO, TeamUpdateDTO, TeamTransferDTO
 } from '@/models/team';
 
 /**
@@ -113,4 +113,16 @@ export const kickTeamMember = (params: { teamId: number | string; targetUserAcco
  */
 export const deleteTeam = (params: { id: number }) => {
   return service.post('/team/delete', params);
+};
+
+/**
+ * 【案卷 #010】转让队长
+ * (SOP 1 契约: POST /api/team/transfer)
+ */
+export const transferCaptain = (params: TeamTransferDTO): Promise<boolean> => {
+  return service({
+    url: '/team/transfer',
+    method: 'POST',
+    data: params,
+  });
 };

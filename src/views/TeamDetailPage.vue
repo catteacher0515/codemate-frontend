@@ -9,7 +9,7 @@ import {
   quitTeam,
   updateTeam,
   kickTeamMember,
-  deleteTeam // 【案卷 #009】新增引入
+  deleteTeam, transferCaptain // 【案卷 #009】新增引入
 } from '@/api/team';
 import type { TeamVO, TeamJoinDTO } from '@/models/team';
 
@@ -200,6 +200,35 @@ const handleUpdateTeam = async () => {
     console.error(e);
   }
 };
+
+// 【案卷 #010】转让队长
+const handleTransferCaptain = async (member: any) => {
+  if (!teamDetails.value) return;
+
+  try {
+    await ElMessageBox.confirm(
+      `确定要将队长转让给成员 "${member.username}" 吗？转让后您将失去队长权限。`,
+      '转让确认',
+      {
+        confirmButtonText: '立即转让',
+        cancelButtonText: '我再想想',
+        type: 'warning'
+      }
+    );
+
+    await transferCaptain({
+      teamId: teamDetails.value.id,
+      newCaptainId: member.id
+    });
+
+    ElMessage.success('转让成功！');
+    // 刷新页面数据，因为“我的身份”变了
+    await loadDetails();
+
+  } catch (e) {
+    if (e !== 'cancel') console.error(e);
+  }
+};
 </script>
 
 <template>
@@ -239,15 +268,25 @@ const handleUpdateTeam = async () => {
             </div>
 
             <div class="member-actions">
-              <el-button
-                v-if="isCaptain && member.id !== currentUserId"
-                type="danger"
-                size="small"
-                plain
-                @click="doKick(member.userAccount)"
-              >
-                踢出
-              </el-button>
+              <template v-if="isCaptain && member.id !== currentUserId">
+                <el-button
+                  type="primary"
+                  size="small"
+                  plain
+                  @click="handleTransferCaptain(member)"
+                >
+                  转让
+                </el-button>
+
+                <el-button
+                  type="danger"
+                  size="small"
+                  plain
+                  @click="doKick(member.userAccount)"
+                >
+                  踢出
+                </el-button>
+              </template>
 
               <el-tag v-if="member.id === teamDetails.userId" type="success" size="small">队长</el-tag>
             </div>

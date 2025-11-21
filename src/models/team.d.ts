@@ -82,3 +82,12 @@ export type TeamPageVO = {
   total: number;     // 总记录数
   // (MP Page 还包含 size, current, pages 等，我们暂时简化)
 };
+
+/**
+ * 【案卷 #010】转让队长合约 (DTO)
+ * (SOP 1 契约: POST /api/team/transfer)
+ */
+export type TeamTransferDTO = {
+  teamId: number | string;
+  newCaptainId: number | string;
+};
