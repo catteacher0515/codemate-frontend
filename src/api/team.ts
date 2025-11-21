@@ -106,3 +106,11 @@ export const kickTeamMember = (params: { teamId: number | string; targetUserAcco
     data: params,
   });
 };
+
+/**
+ * 【案卷 #009】解散队伍
+ * (SOP 1 契约: POST /api/team/delete)
+ */
+export const deleteTeam = (params: { id: number }) => {
+  return service.post('/team/delete', params);
+};

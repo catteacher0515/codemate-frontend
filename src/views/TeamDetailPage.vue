@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-// 引入 API (确保 kickTeamMember 已在 src/api/team.ts 中定义)
+import { ElMessage, ElMessageBox } from 'element-plus';
 import {
   getTeamDetailsById,
   joinTeam,
   inviteUser,
   quitTeam,
   updateTeam,
-  kickTeamMember
+  kickTeamMember,
+  deleteTeam // 【案卷 #009】新增引入
 } from '@/api/team';
 import type { TeamVO, TeamJoinDTO } from '@/models/team';
-import { ElMessage, ElMessageBox } from 'element-plus';
 
 const route = useRoute();
 const router = useRouter();
@@ -21,7 +21,7 @@ const teamDetails = ref<TeamVO>();
 const currentUserId = ref<number>(0);
 const loading = ref(true);
 
-// 弹窗控制
+// 更新弹窗状态
 const showUpdateDialog = ref(false);
 const updateForm = ref({
   name: '',
@@ -30,29 +30,31 @@ const updateForm = ref({
   password: ''
 });
 
-// --- 1. 初始化与权限 ---
+// --- 1. 初始化 ---
 onMounted(async () => {
-  // 获取当前登录用户 ID (从 localStorage)
+  // 获取当前用户ID (从本地缓存)
   const userStr = localStorage.getItem('user_login_state');
   if (userStr) {
-    const user = JSON.parse(userStr);
-    currentUserId.value = user.id;
+    try {
+      const user = JSON.parse(userStr);
+      currentUserId.value = user.id;
+    } catch (e) {
+      console.error('解析用户信息失败');
+    }
   }
   await loadDetails();
 });
 
-// 计算属性：是否为队长
+// 计算属性：我是队长吗？
 const isCaptain = computed(() => {
   return teamDetails.value && teamDetails.value.userId === currentUserId.value;
 });
 
-// --- 2. 数据加载 ---
+// --- 2. 加载数据 ---
 const loadDetails = async () => {
   const teamId = route.params.id as string;
-  if (!teamId) {
-    ElMessage.error('队伍 ID 不存在');
-    return;
-  }
+  if (!teamId) return;
+
   loading.value = true;
   try {
     const res = await getTeamDetailsById(teamId);
@@ -60,56 +62,96 @@ const loadDetails = async () => {
       teamDetails.value = res;
     }
   } catch (error) {
-    console.error('获取队伍详情失败', error);
+    ElMessage.error('获取队伍详情失败');
   } finally {
     loading.value = false;
   }
 };
 
-// --- 3. 核心功能：踢出成员 (案卷 #008) ---
+// --- 3. 核心功能区 ---
+
+// 【案卷 #008】踢出成员
 const doKick = async (targetUserAccount: string) => {
   if (!targetUserAccount || !teamDetails.value) return;
-
   try {
-    // 弹窗确认
     await ElMessageBox.confirm(
-      `确定要将成员 ${targetUserAccount} 移出队伍吗？`,
+      `确定要将用户 ${targetUserAccount} 移出队伍吗？`,
       '踢出确认',
       {
         confirmButtonText: '确定踢出',
         cancelButtonText: '取消',
         type: 'warning',
-        confirmButtonClass: 'el-button--danger' // 警示色
+        confirmButtonClass: 'el-button--danger'
       }
     );
 
-    // 执行请求
     await kickTeamMember({
       teamId: teamDetails.value.id,
       targetUserAccount: targetUserAccount
     });
 
     ElMessage.success('踢出成功');
-    // 刷新数据
-    await loadDetails();
-
+    await loadDetails(); // 刷新数据
   } catch (e) {
-    if (e !== 'cancel') {
-      ElMessage.error('操作失败');
-      console.error(e);
-    }
+    if (e !== 'cancel') console.error(e);
   }
 };
 
-// --- 4. 其他功能 (加入/邀请/退出/更新) ---
+// 【案卷 #009】解散队伍
+const handleDeleteTeam = async () => {
+  if (!teamDetails.value) return;
+  try {
+    await ElMessageBox.confirm(
+      '确定要解散该队伍吗？此操作不可逆！',
+      '解散警告',
+      {
+        confirmButtonText: '确定解散',
+        cancelButtonText: '我再想想',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+      }
+    );
+
+    await deleteTeam({ id: teamDetails.value.id });
+
+    ElMessage.success('队伍已解散');
+    router.replace('/team/search'); // 跳转回列表页
+  } catch (e) {
+    if (e !== 'cancel') console.error(e);
+  }
+};
+
+// 退出队伍
+const handleQuitTeam = async () => {
+  if (!teamDetails.value) return;
+  try {
+    await ElMessageBox.confirm('确定要退出该队伍吗？', '提示', { type: 'info' });
+    await quitTeam({ teamId: teamDetails.value.id });
+    ElMessage.success('已退出队伍');
+    router.replace('/team/search');
+  } catch (e) { }
+};
+
+// 邀请用户
+const handleInviteUser = async () => {
+  if (!teamDetails.value) return;
+  try {
+    const { value: targetAccount } = await ElMessageBox.prompt('请输入用户账号', '邀请用户', {
+      inputPlaceholder: '例如: admin'
+    });
+    if (targetAccount) {
+      await inviteUser({ teamId: teamDetails.value.id, targetUserAccount: targetAccount });
+      ElMessage.success('邀请成功');
+    }
+  } catch (e) { }
+};
 
 // 加入队伍
 const handleJoinTeam = async () => {
   if (!teamDetails.value) return;
   const team = teamDetails.value;
-
   try {
-    if (team.status === 2) { // 加密队伍
+    if (team.status === 2) { // 加密
       const { value: password } = await ElMessageBox.prompt('请输入队伍密码', '加入队伍', {
         inputType: 'password',
         inputPattern: /\S+/,
@@ -119,47 +161,18 @@ const handleJoinTeam = async () => {
     } else {
       await executeJoin({ teamId: team.id });
     }
-  } catch (e) {
-    // 取消操作
-  }
+  } catch (e) { }
 };
 
 const executeJoin = async (params: TeamJoinDTO) => {
   const res = await joinTeam(params);
   if (res) {
     ElMessage.success('加入成功');
-    loadDetails();
+    await loadDetails();
   }
 };
 
-// 邀请用户
-const handleInviteUser = async () => {
-  if (!teamDetails.value) return;
-  try {
-    const { value: targetAccount } = await ElMessageBox.prompt('请输入用户账号', '邀请用户');
-    if (targetAccount) {
-      await inviteUser({ teamId: teamDetails.value.id, targetUserAccount: targetAccount });
-      ElMessage.success('邀请成功');
-    }
-  } catch (e) {
-    // 取消
-  }
-};
-
-// 退出队伍
-const handleQuitTeam = async () => {
-  if (!teamDetails.value) return;
-  try {
-    await ElMessageBox.confirm('确定要退出该队伍吗？', '提示', { type: 'warning' });
-    await quitTeam({ teamId: teamDetails.value.id });
-    ElMessage.success('已退出队伍');
-    router.push('/team/search');
-  } catch (e) {
-    // 取消
-  }
-};
-
-// 更新信息 (弹窗逻辑)
+// 更新队伍信息 (弹窗)
 const openUpdateDialog = () => {
   if (!teamDetails.value) return;
   updateForm.value = {
@@ -174,11 +187,15 @@ const openUpdateDialog = () => {
 const handleUpdateTeam = async () => {
   if (!teamDetails.value) return;
   try {
-    const params = { ...updateForm.value, id: teamDetails.value.id };
+    // 构造更新参数
+    const params = {
+      ...updateForm.value,
+      id: teamDetails.value.id
+    };
     await updateTeam(params);
     ElMessage.success('更新成功');
     showUpdateDialog.value = false;
-    loadDetails();
+    await loadDetails();
   } catch (e) {
     console.error(e);
   }
@@ -250,7 +267,7 @@ const handleUpdateTeam = async () => {
         <template v-if="isCaptain">
           <el-button type="success" @click="handleInviteUser">邀请用户</el-button>
           <el-button type="warning" @click="openUpdateDialog">更新信息</el-button>
-          <el-button type="danger" disabled>解散队伍</el-button>
+          <el-button type="danger" @click="handleDeleteTeam">解散队伍</el-button>
         </template>
 
         <el-button
@@ -278,7 +295,7 @@ const handleUpdateTeam = async () => {
             </el-radio-group>
           </el-form-item>
           <el-form-item label="队伍密码" v-if="updateForm.status === 2">
-            <el-input v-model="updateForm.password" type="password" show-password />
+            <el-input v-model="updateForm.password" type="password" show-password placeholder="不修改请留空" />
           </el-form-item>
         </el-form>
         <template #footer>
@@ -303,74 +320,17 @@ const handleUpdateTeam = async () => {
   border-radius: 8px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
 }
-
-.header-section {
-  margin-bottom: 20px;
-}
-
-.team-title {
-  margin: 0 0 10px 0;
-  font-size: 24px;
-  color: #303133;
-}
-
-.team-meta {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  color: #909399;
-}
-
-.team-descriptions {
-  margin: 20px 0;
-}
-
-.member-list-section {
-  margin-top: 30px;
-}
-
-.member-card {
-  margin-bottom: 10px;
-}
-
-.member-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.member-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.avatar {
-  background: #f0f2f5;
-}
-
-.username {
-  font-weight: 500;
-  color: #303133;
-}
-
-.account {
-  font-size: 12px;
-  color: #909399;
-}
-
-.member-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.footer-actions {
-  margin-top: 40px;
-  display: flex;
-  justify-content: center;
-  gap: 15px;
-  padding-top: 20px;
-  border-top: 1px solid #EBEEF5;
-}
+.header-section { margin-bottom: 20px; }
+.team-title { margin: 0 0 10px 0; font-size: 24px; color: #303133; }
+.team-meta { display: flex; align-items: center; gap: 15px; color: #909399; }
+.team-descriptions { margin: 20px 0; }
+.member-list-section { margin-top: 30px; }
+.member-card { margin-bottom: 10px; }
+.member-content { display: flex; justify-content: space-between; align-items: center; }
+.member-info { display: flex; align-items: center; gap: 12px; }
+.avatar { background: #f0f2f5; }
+.username { font-weight: 500; color: #303133; }
+.account { font-size: 12px; color: #909399; }
+.member-actions { display: flex; align-items: center; gap: 10px; }
+.footer-actions { margin-top: 40px; display: flex; justify-content: center; gap: 15px; padding-top: 20px; border-top: 1px solid #EBEEF5; }
 </style>
