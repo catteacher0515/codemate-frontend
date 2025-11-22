@@ -12,7 +12,10 @@ import {
   deleteTeam, transferCaptain // 【案卷 #009】新增引入
 } from '@/api/team';
 import type { TeamVO, TeamJoinDTO } from '@/models/team';
+import TeamChatRoom from '@/components/TeamChatRoom.vue';
 
+
+const showChatDrawer = ref(false);
 const route = useRoute();
 const router = useRouter();
 
@@ -303,6 +306,16 @@ const handleTransferCaptain = async (member: any) => {
           加入队伍
         </el-button>
 
+        <template v-if="teamDetails.members?.some(u => u.id === currentUserId)">
+          <el-button
+            type="primary"
+            plain
+            @click="showChatDrawer = true"
+          >
+            💬 聊一聊
+          </el-button>
+        </template>
+
         <template v-if="isCaptain">
           <el-button type="success" @click="handleInviteUser">邀请用户</el-button>
           <el-button type="warning" @click="openUpdateDialog">更新信息</el-button>
@@ -345,31 +358,21 @@ const handleTransferCaptain = async (member: any) => {
         </template>
       </el-dialog>
 
+      <el-drawer
+        v-model="showChatDrawer"
+        title="队伍聊天室"
+        direction="rtl"
+        size="400px"
+        destroy-on-close
+      >
+        <TeamChatRoom
+          v-if="teamDetails"
+          :team-id="teamDetails.id"
+          :current-user="{ id: currentUserId }"
+        />
+      </el-drawer>
+
     </div>
     <el-empty v-else description="队伍不存在或无法访问" />
   </div>
 </template>
-
-<style scoped>
-.team-detail-container {
-  max-width: 800px;
-  margin: 20px auto;
-  padding: 24px;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-}
-.header-section { margin-bottom: 20px; }
-.team-title { margin: 0 0 10px 0; font-size: 24px; color: #303133; }
-.team-meta { display: flex; align-items: center; gap: 15px; color: #909399; }
-.team-descriptions { margin: 20px 0; }
-.member-list-section { margin-top: 30px; }
-.member-card { margin-bottom: 10px; }
-.member-content { display: flex; justify-content: space-between; align-items: center; }
-.member-info { display: flex; align-items: center; gap: 12px; }
-.avatar { background: #f0f2f5; }
-.username { font-weight: 500; color: #303133; }
-.account { font-size: 12px; color: #909399; }
-.member-actions { display: flex; align-items: center; gap: 10px; }
-.footer-actions { margin-top: 40px; display: flex; justify-content: center; gap: 15px; padding-top: 20px; border-top: 1px solid #EBEEF5; }
-</style>

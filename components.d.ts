@@ -43,6 +43,7 @@ declare module 'vue' {
     IconTooling: typeof import('./src/components/icons/IconTooling.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    TeamChatRoom: typeof import('./src/components/TeamChatRoom.vue')['default']
     TheWelcome: typeof import('./src/components/TheWelcome.vue')['default']
     UserCard: typeof import('./src/components/UserCard.vue')['default']
     WelcomeItem: typeof import('./src/components/WelcomeItem.vue')['default']
