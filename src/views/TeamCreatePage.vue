@@ -1,208 +1,180 @@
 <template>
-  <div class="minimal-page">
-    <h1>“重塑”创建队伍页 (最小可行版)</h1>
-    <p>
-      目标：使用 `POST /api/team/create` 契约，提交表单。
-    </p>
+  <div class="create-container">
+    <div class="glass-form-card">
+      <div class="header">
+        <h2>创建新船队 (Blueprint)</h2>
+        <p>规划你的航线，召集你的船员</p>
+      </div>
 
-    <div class="form-group">
-      <label for="name">队伍名称:</label>
-      <input id="name" v-model.trim="form.name" placeholder="输入队伍名称" />
-    </div>
-    <div class="form-group">
-      <label for="description">队伍描述:</label>
-      <textarea id="description" v-model="form.description" placeholder="输入队伍描述"></textarea>
-    </div>
-    <div class="form-group">
-      <label for="maxNum">最大人数:</label>
-      <input id="maxNum" v-model.number="form.maxNum" type="number" min="2" max="10" />
-    </div>
-    <div class="form-group">
-      <label for="expireTime">过期时间:</label>
-      <input id="expireTime" v-model="form.expireTime" type="datetime-local" />
-    </div>
-    <div class="form-group">
-      <label for="status">队伍状态:</label>
-      <select id="status" v-model.number="form.status">
-        <option value="0">公开</option>
-        <option value="1">私有</option>
-        <option value="2">加密</option>
-      </select>
-    </div>
-    <div v-if="form.status === 2" class="form-group password-field">
-      <label for="password">队伍密码 (加密时必填):</label>
-      <input id="password" v-model="form.password" type="password" />
-    </div>
-    <div class="form-group">
-      <label for="tags">标签 (逗号分隔):</label>
-      <input id="tags" v-model="tagsInput" placeholder="e.g., Java,Vue,Spring" />
-    </div>
+      <el-form
+        ref="formRef"
+        :model="form"
+        label-position="top"
+        class="ocean-form"
+      >
+        <el-form-item label="船队代号 (Name)">
+          <el-input v-model="form.name" placeholder="给你的队伍起个响亮的名字" size="large" />
+        </el-form-item>
 
-    <button @click="handleCreate" class="fetch-button">
-      【点击这里】创建队伍
-    </button>
+        <el-form-item label="航行日志 (Description)">
+          <el-input
+            v-model="form.description"
+            type="textarea"
+            :rows="4"
+            placeholder="介绍一下你的目标..."
+          />
+        </el-form-item>
 
-    <hr>
+        <div class="row-2">
+          <el-form-item label="最大载员">
+            <el-input-number v-model="form.maxNum" :min="2" :max="10" style="width: 100%" />
+          </el-form-item>
 
-    <div v-if="isLoading">
-      <h3>状态：正在创建...</h3>
-    </div>
-    <div v-if="error">
-      <h3>状态：创建失败！</h3>
-      <pre class="error-box">{{ error }}</pre>
-    </div>
-    <div v-if="responseData">
-      <h3>状态：创建成功！</h3>
-      <p>后端返回的新队伍 ID 如下：</p>
-      <pre class="data-box">{{ responseData }}</pre>
+          <el-form-item label="加密模式">
+            <el-select v-model="form.status" placeholder="选择模式" style="width: 100%">
+              <el-option label="公开航线 (Public)" :value="0" />
+              <el-option label="加密航线 (Protected)" :value="2" />
+              <el-option label="隐形航线 (Private)" :value="1" />
+            </el-select>
+          </el-form-item>
+        </div>
+
+        <el-form-item v-if="form.status === 2" label="通行密钥">
+          <el-input v-model="form.password" type="password" show-password placeholder="设置入队密码" />
+        </el-form-item>
+
+        <el-form-item label="过期时间 (选填)">
+          <el-date-picker
+            v-model="form.expireTime"
+            type="datetime"
+            placeholder="选择解散时间"
+            style="width: 100%"
+          />
+        </el-form-item>
+
+        <div class="actions">
+          <el-button type="primary" size="large" class="submit-btn" @click="handleCreate" :loading="isLoading">
+            立即下水 (LAUNCH)
+          </el-button>
+        </div>
+      </el-form>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-// --- 依赖 ---
-// 【【【 v1.2 核心修复：移除未使用的 'computed' 】】】
-import { ref } from 'vue';
+import { ref, reactive, getCurrentInstance } from 'vue';
 import axios from 'axios';
 import { useRouter } from 'vue-router';
 
-// --- 状态定义 ---
-// (1) 表单数据
-const form = ref({
-  name: "我的第三支队伍", // (又改个名)
-  description: "这是一个很棒的队伍",
+const router = useRouter();
+const { proxy } = getCurrentInstance() as any;
+const ElMessage = proxy.$message;
+
+const isLoading = ref(false);
+const form = reactive({
+  name: '',
+  description: '',
   maxNum: 5,
-  expireTime: "",
+  expireTime: null,
   status: 0,
-  password: "",
-  tags: [] as string[]
+  password: '',
+  tags: []
 });
 
-// (2) 中间状态
-const tagsInput = ref("Java,Vue");
-
-// (3) 响应状态
-const isLoading = ref(false);
-const error = ref<string | null>(null);
-const responseData = ref<any | null>(null);
-const router = useRouter();
-
-// --- 核心“火力点” (v1.1 胜利跳转版) ---
 const handleCreate = async () => {
-  // (重置状态)
-  isLoading.value = true;
-  error.value = null;
-  responseData.value = null;
-
-  // (数据处理)
-  form.value.tags = tagsInput.value
-    .split(',')
-    .map(tag => tag.trim())
-    .filter(tag => tag.length > 0);
-  if (form.value.status === 2 && !form.value.password) {
-    error.value = "“加密”队伍必须设置密码！";
-    isLoading.value = false;
+  if (!form.name) {
+    ElMessage.warning('船队必须有代号');
     return;
   }
-  if (form.value.status !== 2) {
-    form.value.password = "";
+  if (form.status === 2 && !form.password) {
+    ElMessage.warning('加密船队必须设置密钥');
+    return;
   }
 
+  isLoading.value = true;
   try {
-    console.log("【v1.2】正在启动 API 请求...");
-    console.log("【v1.2】发送的数据 (Body):", form.value);
-
-    // (API 调用)
-    const response = await axios.post('/api/team/create', form.value);
-
-    // (业务失败)
-    if (response.data.code !== 0) {
-      console.error("【v1.2】API 业务失败:", response.data);
-      throw new Error(`后端业务失败: ${response.data.message} (Code: ${response.data.code})`);
-    }
-
-    // --- 成功！---
-    console.log("【v1.2】API 成功:", response.data);
-    isLoading.value = false;
-    responseData.value = response.data.data;
-
-    // (胜利跳转)
-    const newTeamId = response.data.data;
-    setTimeout(() => {
-      router.push(`/team/${newTeamId}`);
-    }, 2000);
-
-  } catch (err: any) {
-    // (失败)
-    console.error("【v1.2】API 捕获到错误:", err);
-    isLoading.value = false;
-
-    if (err.response && err.response.data) {
-      error.value = `后端返回错误: ${JSON.stringify(err.response.data)}`;
+    const res = await axios.post('/api/team/create', form);
+    if (res.data.code === 0) {
+      ElMessage.success('船队创建成功！正在入列...');
+      const newId = res.data.data;
+      setTimeout(() => router.push(`/team/${newId}`), 1000);
     } else {
-      error.value = err.message || '一个未知的网络错误发生了';
+      ElMessage.error(res.data.message);
     }
+  } catch (e) {
+    ElMessage.error('创建失败，通讯中断');
+  } finally {
+    isLoading.value = false;
   }
 };
 </script>
 
 <style scoped>
-/* (v1.0 样式 - 保持不变) */
-.minimal-page {
-  padding: 20px;
-  font-family: Arial, sans-serif;
-  line-height: 1.6;
+.create-container {
+  display: flex;
+  justify-content: center;
+  padding: 40px 20px;
+  /* 确保底部有足够的空间滚动 */
+  padding-bottom: 100px;
 }
-.form-group {
-  margin-bottom: 15px;
+
+.glass-form-card {
+  width: 100%;
+  max-width: 600px;
+  background: rgba(20, 30, 48, 0.6); /* 加深背景 */
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 40px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
 }
-.form-group label {
-  display: block;
-  margin-bottom: 5px;
+
+.header h2 {
+  color: #fff;
+  margin: 0 0 10px 0;
+  font-size: 24px;
+  text-shadow: 0 0 10px rgba(0, 242, 234, 0.3);
+}
+
+.header p {
+  color: rgba(255,255,255,0.6);
+  margin-bottom: 30px;
+}
+
+.row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* 强制覆盖 Label 颜色 */
+:deep(.el-form-item__label) {
+  color: rgba(255,255,255,0.9) !important;
+  font-weight: 500;
+}
+
+.actions {
+  margin-top: 40px;
+  text-align: center;
+}
+
+.submit-btn {
+  width: 100%;
+  height: 50px;
+  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-blue)) !important;
+  border: none !important;
   font-weight: bold;
+  font-size: 18px;
+  color: #000 !important; /* 黑字配亮背景 */
+  letter-spacing: 2px;
+  border-radius: 25px;
+  box-shadow: 0 0 20px rgba(0, 242, 234, 0.4);
+  transition: transform 0.2s;
 }
-.form-group input,
-.form-group textarea,
-.form-group select {
-  width: 400px;
-  padding: 8px;
-  font-size: 14px;
-  box-sizing: border-box;
-}
-.form-group textarea {
-  height: 80px;
-  resize: vertical;
-}
-.password-field input {
-  border: 1px solid #d8000c;
-}
-.fetch-button {
-  padding: 10px 15px;
-  font-size: 16px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-}
-.fetch-button:hover {
-  background-color: #0056b3;
-}
-.error-box {
-  background-color: #ffebeb;
-  color: #d8000c;
-  border: 1px solid #d8000c;
-  padding: 10px;
-  white-space: pre-wrap;
-}
-.data-box {
-  background-color: #e6f7ff;
-  color: #0056b3;
-  border: 1px solid #007bff;
-  padding: 10px;
-  white-space: pre-wrap;
-}
-hr {
-  margin: 20px 0;
+
+.submit-btn:hover {
+  transform: scale(1.02);
+  box-shadow: 0 0 30px rgba(0, 242, 234, 0.6);
 }
 </style>

@@ -1,31 +1,43 @@
 <template>
-  <el-card
-    class="user-card"
-    shadow="hover"
-    @click="handleClick"
-  >
-    <div class="card-header">
-      <el-avatar :size="60" :src="props.user.avatarUrl" />
-      <div class="user-info">
-        <span class="username">{{ props.user.username }} (id: {{ props.user.id }})</span>
-        <span class="user-account">{{ props.user.userAccount }}</span>
+  <div class="glass-card" @click="handleClick">
+    <div class="card-highlight"></div>
+
+    <div class="card-content">
+      <div class="header-section">
+        <div class="avatar-wrapper">
+          <el-avatar :size="56" :src="user.avatarUrl" class="user-avatar" />
+          <div class="online-dot"></div> </div>
+        <div class="info-block">
+          <div class="username-row">
+            <span class="username">{{ user.username }}</span>
+            <span class="id-badge">#{{ user.id }}</span>
+          </div>
+          <div class="account-row">{{ user.userAccount }}</div>
+        </div>
+      </div>
+
+      <div class="tags-container">
+        <span
+          v-for="tag in user.tags"
+          :key="tag"
+          class="crystal-tag"
+        >
+          {{ tag }}
+        </span>
+      </div>
+
+      <div class="card-footer">
+        <button class="action-btn">
+          联系 TA
+        </button>
       </div>
     </div>
-    <div class="card-body">
-      <el-tag v-for="tag in props.user.tags" :key="tag" size="small" style="margin-right: 5px;">
-        {{ tag }}
-      </el-tag>
-    </div>
-    <template #footer>
-      <el-button type="primary" plain>联系我</el-button>
-    </template>
-  </el-card>
+  </div>
 </template>
 
 <script setup lang="ts">
-// 【“案子 B” - 修复】
-// 我们（作为“子组件”）定义我们“需要”什么。
-// 我们“需要”一个“user”对象，它必须符合这个“类型”。
+import type { PropType } from 'vue';
+
 interface UserType {
   id: number;
   username: string;
@@ -34,51 +46,162 @@ interface UserType {
   tags: string[];
 }
 
-// 1. 定义“父组件”必须“喂”给我们的 prop
-const props = defineProps<{
-  user: UserType
-}>();
+const props = defineProps({
+  user: {
+    type: Object as PropType<UserType>,
+    required: true
+  }
+});
 
-// 【“案子 A” - 修复 2/4】
-// 2. 定义我们要“发出”的“信号”
-const emit = defineEmits<{
-  (e: 'cardClicked', id: number): void
-}>();
+const emit = defineEmits(['cardClicked']);
 
-// 【“案子 A” - 修复 3/4】
-// 3. 当卡片被点击时，
 const handleClick = () => {
-  // “发出信号”，并把“我们”的 ID (props.user.id) 作为“信号内容”
   emit('cardClicked', props.user.id);
 };
 </script>
 
 <style scoped>
-/* (样式与我上一条回复中的“V2.1 修复·蓝图”一致) */
-.user-card {
+/* === 核心容器：玻璃态卡片 === */
+.glass-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 16px;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
 }
-.user-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0px 12px 32px 4px rgba(0, 0, 0, 0.06), 0px 8px 20px rgba(0, 0, 0, 0.04);
+
+/* 悬停效果：上浮 + 霓虹边框 + 内部发光 */
+.glass-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--neon-cyan); /* 引用全局变量 */
+  box-shadow: 0 0 20px rgba(0, 242, 234, 0.15), inset 0 0 20px rgba(0, 242, 234, 0.05);
+  background: rgba(255, 255, 255, 0.06);
 }
-.card-header {
+
+/* 顶部高光条装饰 */
+.card-highlight {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+}
+
+.header-section {
   display: flex;
   align-items: center;
-  margin-bottom: 15px;
+  margin-bottom: 12px;
 }
-.user-info {
+
+.avatar-wrapper {
+  position: relative;
+  margin-right: 12px;
+}
+
+.user-avatar {
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  transition: border-color 0.3s;
+}
+
+.glass-card:hover .user-avatar {
+  border-color: var(--neon-cyan);
+}
+
+.online-dot {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 10px;
+  height: 10px;
+  background: #00ff88;
+  border-radius: 50%;
+  border: 2px solid #1a1a1a; /* 与深色背景融合 */
+  box-shadow: 0 0 5px #00ff88;
+}
+
+.info-block {
+  flex: 1;
+  overflow: hidden;
+}
+
+.username-row {
   display: flex;
-  flex-direction: column;
-  margin-left: 15px;
+  align-items: center;
+  margin-bottom: 4px;
 }
+
 .username {
-  font-weight: bold;
-  font-size: 1.1em;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  margin-right: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.user-account {
-  font-size: 0.9em;
-  color: #888;
+
+.id-badge {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+}
+
+.account-row {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* === 晶体标签 === */
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+  height: 24px; /* 限制高度，防止标签过多撑开 */
+  overflow: hidden;
+}
+
+.crystal-tag {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(0, 242, 234, 0.1); /* 青色半透明 */
+  color: var(--neon-cyan);
+  border: 1px solid rgba(0, 242, 234, 0.2);
+  backdrop-filter: blur(4px);
+}
+
+/* 底部按钮区 */
+.card-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 10px;
+  text-align: right;
+}
+
+.action-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.glass-card:hover .action-btn {
+  background: var(--neon-blue);
+  border-color: var(--neon-blue);
+  box-shadow: 0 0 10px rgba(0, 128, 255, 0.4);
 }
 </style>

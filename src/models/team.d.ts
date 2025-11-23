@@ -60,6 +60,7 @@ export type TeamSearchDTO = {
  */
 export type TeamVO = {
   // ... (你现有的 TeamVO 字段)
+  hasJoinNum?: number; // 【新增】已加入人数
   id: number;
   name: string;
   description: string;

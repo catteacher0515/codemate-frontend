@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 这里是全局的 <script> 区域，比如以后我们可以在这里检查登录状态
+// 全局脚本区域
 </script>
 
 <template>
@@ -7,14 +7,24 @@
 </template>
 
 <style>
-/* 我们删除了 <style scoped>，换成了全局的 <style>。
-  这里是我们的全局 CSS 初始化的地方。
-  我们把 Vite 自带的边距 (margin) 和填充 (padding) 都去掉，
-  确保我们的 Element Plus 布局能占满全屏。
-*/
+/* === 全局重置补丁 === */
+/* 这里的样式是全局生效的，不加 scoped */
+
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100%;
+  height: 100%;
+  overflow: hidden; /* 禁止出现莫名其妙的滚动条 */
+  background-color: #0f2027; /* 兜底深色背景，防止白边闪烁 */
+}
+
 #app {
-  padding: 0;
-  margin: 0;
-  max-width: 100vw; /* 占满全屏 */
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100%;
+  height: 100%;
+  max-width: 100vw;
+  overflow: hidden;
 }
 </style>
