@@ -1,41 +1,46 @@
 import { fileURLToPath, URL } from 'node:url'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite' // 1. 引入 loadEnv
 import vue from '@vitejs/plugin-vue'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 
 // https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [
-    vue(),
-    AutoImport({
-      resolvers: [],
-      dts: 'auto-imports.d.ts',
-    }),
-    Components({
-      resolvers: [],
-      dts: 'components.d.ts',
-    }),
-  ],
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
-    }
-  },
-  server: {
-    proxy: {
-      // 【关键修改】给 /api 代理开启 ws: true
-      '/api': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-        ws: true // <--- 加上这一行！让 API 代理也能转发 WebSocket
-      },
-      // (原来的 /ws 代理可以删掉了，反正也不用它了)
-    }
-  },
-  // 3. 【关键修复】手动定义 global 变量
-  // 解决 stompjs 在 Vite 环境下报错 "global is not defined" 的问题
-  define: {
-    global: 'window',
-  },
+// 2. 将配置改为函数形式: ({ mode }) => { ... }
+export default defineConfig(({ mode }) => {
+  // 3. 加载当前环境的变量
+  // process.cwd(): 获取当前工作目录
+  // '': 加载所有环境变量(不管是否有 VITE_ 前缀)
+  const env = loadEnv(mode, process.cwd(), '')
+
+  return {
+    plugins: [
+      vue(),
+      AutoImport({
+        resolvers: [],
+        dts: 'auto-imports.d.ts',
+      }),
+      Components({
+        resolvers: [],
+        dts: 'components.d.ts',
+      }),
+    ],
+    resolve: {
+      alias: {
+        '@': fileURLToPath(new URL('./src', import.meta.url))
+      }
+    },
+    server: {
+      proxy: {
+        // 4. 使用环境变量替换硬编码
+        '/api': {
+          target: env.VITE_API_BASE_URL, // <--- 这里变成了变量!
+          changeOrigin: true,
+          ws: true
+        },
+      }
+    },
+    define: {
+      global: 'window',
+    },
+  }
 })
